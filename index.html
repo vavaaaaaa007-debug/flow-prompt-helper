@@ -17,7 +17,7 @@
 .ln2cdot:hover{transform:scale(1.15)}
 /* ── Design tokens ───────────────────────────────────────── */
 :root {
-  /* 恢复最初的蓝紫色背景、蓝色主色与深色导航；保留后续功能和控件尺寸。 */
+  /* 保留蓝紫色主题与深色导航；普通正文统一深灰蓝，已拷贝卡片使用淡樱花粉。 */
   --blue-900: #1e3a8a;
   --blue-700: #1d4ed8;
   --blue-600: #2563eb;
@@ -31,10 +31,10 @@
   --teal-50:  #f0fdf4;
   --amber-500: #f59e0b;
   --red-400:  #f87171;
-  --pink-100: #fce7f3;
-  --pink-300: #f9a8d4;
-  --text-primary:   #1a2340;
-  --text-secondary: #4a5a80;
+  --pink-100: #fff5f8;
+  --pink-300: #fbcfe8;
+  --text-primary:   #334155;
+  --text-secondary: #334155;
   --text-muted:     #6b7db3;
   --text-faint:     #94a3b8;
   --border:         rgba(99,138,255,.18);
@@ -47,7 +47,7 @@
   --bg-sidebar:     rgba(255,255,255,.9);
   --primary-gradient: linear-gradient(135deg,var(--blue-600),var(--blue-400));
   --primary-text:   #ffffff;
-  --copied-text:    #60a5fa;
+  --copied-text:    #334155;
   --copy-feedback-end: #34d399;
   --accent-rgb:       37,99,235;
   --selection-rgb:    219,234,254;
@@ -72,6 +72,9 @@
 /* ── Reset ───────────────────────────────────────────────── */
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB',sans-serif;background:var(--bg-page);color:var(--text-primary);min-height:100vh;font-size:var(--font-base);-webkit-font-smoothing:antialiased}
+
+/* 避免原生表单控件回退为浏览器默认黑字；功能色和作者显式标色继续优先。 */
+button,input,select,textarea{color:var(--text-primary)}
 
 /* ── Nav ─────────────────────────────────────────────────── */
 .nav{display:flex;flex-direction:column;background:var(--bg-nav);border-right:1px solid #0f172a;padding:12px 8px;position:sticky;top:0;height:100vh;z-index:50;gap:4px;width:168px;flex-shrink:0;box-sizing:border-box}
@@ -359,7 +362,7 @@ input[type=text],textarea,select,#lines2{background-color:var(--bg-input)!import
           <div class="scene-grid" id="sceneGrid" style="height:100px;min-height:60px;max-height:60vh;overflow-y:auto;resize:vertical;border:1px solid var(--border-input);border-radius:8px;padding:8px;display:block"></div>
           <div id="splitDirRow" style="display:none;margin-top:6px">
             <div class="toggle-row" style="gap:6px">
-              <span style="font-size:12px;color:#555;white-space:nowrap">分屏方向</span>
+              <span style="font-size:12px;color:var(--text-primary);white-space:nowrap">分屏方向</span>
               <button class="toggle-btn split-dir-btn active" data-dir="lr" data-flow-onclick="selectSplitDir('lr')">左右</button>
               <button class="toggle-btn split-dir-btn" data-dir="tb" data-flow-onclick="selectSplitDir('tb')">上下</button>
             </div>
@@ -4924,7 +4927,7 @@ function flowPromptRichContent(box) {
     Array.from(node.childNodes).forEach(child => walk(child, color));
     if (blocks.has(node.nodeName)) lineBreak();
   };
-  // 不读取 box 自身的颜色：它可能只是界面的“已拷贝”浅蓝状态。
+  // 不读取 box 自身的状态色；默认正文色由导出容器统一指定，作者显式标色仍保留。
   Array.from(box.childNodes).forEach(node => walk(node, ''));
   const start = raw.length - raw.replace(/^\n+/, '').length;
   const end = raw.replace(/\n+$/, '').length;
@@ -4954,9 +4957,9 @@ function flowPromptTablePayload(rows, includeTail = false) {
     // 表格正文用真实换行；不把 Office 的 BR 标记交给可能将其显示为文字的粘贴目标。
     // 单条拷贝保持原样；这里仅转换安全序列化器生成的标签，不改动作者的字面文本或颜色。
     const promptHtml = row.html.replace(/<br\b[^>]*>/gi, '\n');
-    return '<tr>' + cell(frame, 'color:#111827;') + cell(includeTail ? frame : '', 'color:#111827;')
-      + cell(row.number, 'white-space:nowrap;color:' + (row.hasColor ? '#dc2626' : '#111827') + ';')
-      + '<td style="' + escapeHtmlAttr(textStyle + 'color:#111827;') + '">' + promptHtml + '</td></tr>';
+    return '<tr>' + cell(frame, 'color:#334155;') + cell(includeTail ? frame : '', 'color:#334155;')
+      + cell(row.number, 'white-space:nowrap;color:' + (row.hasColor ? '#dc2626' : '#334155') + ';')
+      + '<td style="' + escapeHtmlAttr(textStyle + 'color:#334155;') + '">' + promptHtml + '</td></tr>';
   }).join('') + '</tbody></table>';
   const text = rows.map(row => [frameName(row), includeTail ? frameName(row) : '', row.number, row.text].map(flowPromptTsvCell).join('\t')).join('\n');
   return { text, html };
@@ -5054,7 +5057,7 @@ function flowCopyProofSelection(event, boundary) {
   const rich = flowPromptRichContent(holder);
   const text = rich.text.split('\n').map(line => line.replace(/^\s+/, '')).join('\n').replace(/\n+$/, '');
   if (!text) return false;
-  event.clipboardData.setData('text/html', '<meta charset="utf-8"><div style="color:#111827;white-space:pre-wrap">' + rich.html + '</div>');
+  event.clipboardData.setData('text/html', '<meta charset="utf-8"><div style="color:#334155;white-space:pre-wrap">' + rich.html + '</div>');
   event.clipboardData.setData('text/plain', text);
   event.preventDefault();
   boundary.querySelectorAll('td').forEach(cell => {
@@ -5132,7 +5135,7 @@ async function copyVCardText(id) {
   box.dataset.copying = '1';
   let copied = false;
   try {
-    copied = await flowCopyRichText(text, '<meta charset="utf-8"><div style="color:#111827;white-space:pre-wrap">' + rich.html + '</div>');
+    copied = await flowCopyRichText(text, '<meta charset="utf-8"><div style="color:#334155;white-space:pre-wrap">' + rich.html + '</div>');
   } catch(e) { copied = false; }
   finally { delete box.dataset.copying; }
   if (copied) markDone();
@@ -7757,7 +7760,7 @@ async function copyOut() {
   };
   let copied = false;
   el.dataset.copying = '1';
-  try { copied = await flowCopyRichText(text, '<meta charset="utf-8"><div style="color:#111827;white-space:pre-wrap">' + snapshot.html + '</div>'); }
+  try { copied = await flowCopyRichText(text, '<meta charset="utf-8"><div style="color:#334155;white-space:pre-wrap">' + snapshot.html + '</div>'); }
   catch(e) { copied = false; }
   finally { delete el.dataset.copying; }
   if (copied) markDone();
@@ -8849,7 +8852,7 @@ function initBatchScrollbar() {
   // 需求3：HTML + 纯文本双格式写剪贴板，粘贴到表格/文档保留颜色
   async function _copyProofRich(plainText, htmlText) {
     let copied = false;
-    try { copied = await flowCopyRichText(plainText, '<meta charset="utf-8">' + htmlText); }
+    try { copied = await flowCopyRichText(plainText, '<meta charset="utf-8"><div style="color:#334155;white-space:pre-wrap">' + htmlText + '</div>'); }
     catch(e) { copied = false; }
     if (!copied) flowToast('文案拷贝失败，请允许剪贴板访问后重试', 'error');
     return copied;
@@ -8996,7 +8999,7 @@ function initBatchScrollbar() {
     const rows = out ? Array.from(out.querySelectorAll('tr')).filter(row => row.cells.length === 4 && row.cells[1].nodeName === 'TD').map(row => [row.cells[1], row.cells[2]].map(box => ({ box, snapshot: flowCopySnapshot(box) }))) : [];
     if (!rows.length) { statusEl.textContent = '请先点击"处理"'; return false; }
     const plain = rows.map(row => row.map(item => flowPromptTsvCell(item.snapshot.text)).join('\t')).join('\n');
-    const table = '<table><tbody>' + rows.map(row => '<tr>' + row.map(item => '<td style="color:#111827;white-space:pre-wrap">' + item.snapshot.html + '</td>').join('') + '</tr>').join('') + '</tbody></table>';
+    const table = '<table><tbody>' + rows.map(row => '<tr>' + row.map(item => '<td style="color:#334155;white-space:pre-wrap">' + item.snapshot.html + '</td>').join('') + '</tr>').join('') + '</tbody></table>';
     const markDone = () => {
       if (btn) {
         btn.classList.add('copy-anim');
