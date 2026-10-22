@@ -650,7 +650,7 @@ input[type=text],textarea,select,#lines2{background-color:var(--bg-input)!import
       <div id="output2Container" class="card" style="display:none" role="region" aria-labelledby="videoPromptsHeading">
         <div id="copyAllVideoPromptsToolbar" class="prompt-results-header" style="display:none">
           <h2 class="card-title" id="videoPromptsHeading" style="margin-bottom:0">提示词</h2>
-          <button class="copy-btn" type="button" id="copyAllVideoPromptsBtn" disabled data-flow-onmousedown="event.preventDefault()" data-flow-onclick="copyAllVideoPrompts()" title="拷贝全部分镜为四列表格：首帧图片名、尾帧图片名、分镜片段名称、分镜提示词">拷贝全部</button>
+          <button class="copy-btn" type="button" id="copyAllVideoPromptsBtn" disabled data-flow-onmousedown="event.preventDefault()" data-flow-onclick="copyAllVideoPrompts()" title="拷贝全部分镜为六列表格：首帧、尾帧、分镜片段、分镜提示词、素材模式、秒数；秒数按口播文案字符数估算">拷贝全部</button>
         </div>
         <div id="videoScrollOuter" style="position:relative;display:none">
           <div id="videoScrollWrap" class="batch-scroll-wrap">
@@ -782,7 +782,7 @@ input[type=text],textarea,select,#lines2{background-color:var(--bg-input)!import
 <div class="overlay" id="flowTailFrameOverlay" aria-hidden="true">
   <div class="modal confirm-modal" role="dialog" aria-modal="true" aria-labelledby="flowTailFrameTitle" tabindex="-1">
     <h2 id="flowTailFrameTitle">是否拷贝尾帧图片名？</h2>
-    <div class="confirm-message">首帧图片名按主序号生成，如 01。不含尾帧时，表格中的尾帧列留空。</div>
+    <div class="confirm-message">首帧图片名按主序号生成，如 01。不含尾帧时，表格中的尾帧列留空。新增“素材模式”固定为“素材”；秒数按口播字符数估算：80 字以内 6 秒，81–119 字 8 秒，120 字起 10 秒（含空格和标点）。</div>
     <div class="modal-btns">
       <button class="btn" type="button" id="flowTailFrameCancel">取消</button>
       <button class="btn" type="button" id="flowTailFrameNo">不含尾帧</button>
@@ -4570,7 +4570,7 @@ function generateVideo() {
     const h = hd ? escapeHtml(hd).replace(/\n/g, '<br>') + '<br>' : '';
     const l = colorizeLine2c(line, colors);
     const p = pp[1] ? '<br>' + escapeHtml(pp[1]).replace(/\n/g, '<br>') : '';
-    return h + l + p;
+    return h + '<span class="flow-prompt-speech">' + l + '</span>' + p;
   };
   const smileT2 = getSelectedSmileText2() ? applyPerson2(getSelectedSmileText2()) : null;
 
@@ -4851,12 +4851,12 @@ function _saveCopiedMarks(set) {
   catch (e) {}
 }
 function flowCopySnapshot(box) {
-  return { ...flowPromptRichContent(box), scope: typeof _currentGroup === 'string' ? _currentGroup : '', identity: box.dataset.promptNumber || box.id || '' };
+  return { ...flowPromptRichContent(box), speechText: flowPromptSpokenText(box), scope: typeof _currentGroup === 'string' ? _currentGroup : '', identity: box.dataset.promptNumber || box.id || '' };
 }
 function flowCopySnapshotMatches(box, snapshot) {
   if (!box || !box.isConnected || !snapshot) return false;
   const current = flowCopySnapshot(box);
-  return current.scope === snapshot.scope && current.identity === snapshot.identity && current.text === snapshot.text && current.html === snapshot.html;
+  return current.scope === snapshot.scope && current.identity === snapshot.identity && current.text === snapshot.text && current.html === snapshot.html && current.speechText === snapshot.speechText;
 }
 function flowClearCopiedMark(box) {
   if (!box) return;
@@ -4948,20 +4948,47 @@ function flowPromptTsvCell(value) {
   return /[\t\r\n"]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
 }
 
+// 只读取实际口播区域；不从含中文/4K/英文运镜要求的完整提示词猜测葡语范围。
+function flowPromptSpokenText(box) {
+  const nodes = Array.from(box.querySelectorAll('.flow-prompt-speech')).filter(node => {
+    // 只忽略正文内部隐藏的文字；外层分组折叠不影响导出。
+    for (let current = node; current && current !== box; current = current.parentNode) {
+      if (current.hidden || (current.style && current.style.display === 'none')) return false;
+    }
+    return true;
+  });
+  const roots = nodes.filter(node => !nodes.some(other => other !== node && other.contains(node)));
+  return roots.length ? roots.map(node => flowPromptRichContent(node).text).join('\n') : null;
+}
+
+function flowSpeechCharCount(text) {
+  if (typeof text !== 'string') return 0;
+  // 葡语重音按 NFC 合并；空白统一为一个空格，标点计数，隐藏控制符不计数。
+  const normalized = text.normalize('NFC').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\u200B-\u200D\uFEFF]/g, '').replace(/\s+/gu, ' ').trim();
+  return Array.from(normalized).length;
+}
+
+function flowSpeechSeconds(text) {
+  const chars = flowSpeechCharCount(text);
+  // 按用户提供的 40 条葡语样例校准；无法识别时保守使用最大档，不截断原文。
+  return chars === 0 ? 10 : chars <= 80 ? 6 : chars < 120 ? 8 : 10;
+}
+
 function flowPromptTablePayload(rows, includeTail = false) {
   const textStyle = 'mso-number-format:"\\@";vertical-align:top;white-space:pre-wrap;';
   const frameName = row => String(row.number).split('-')[0].padStart(2, '0');
   const cell = (value, style) => '<td style="' + escapeHtmlAttr(textStyle + style) + '">' + escapeHtml(value) + '</td>';
   const html = '<meta charset="utf-8"><table><tbody>' + rows.map(row => {
     const frame = frameName(row);
-    // 表格正文用真实换行；不把 Office 的 BR 标记交给可能将其显示为文字的粘贴目标。
-    // 单条拷贝保持原样；这里仅转换安全序列化器生成的标签，不改动作者的字面文本或颜色。
+    // 真实换行放在 PRE 内，避免粘贴目标忽略 TD 的 white-space 样式后将三段合为一行。
+    // 只转换安全序列化器生成的 BR；保留字面文本/颜色，沿用正文的字体且不增加段间距。
     const promptHtml = row.html.replace(/<br\b[^>]*>/gi, '\n');
     return '<tr>' + cell(frame, 'color:#334155;') + cell(includeTail ? frame : '', 'color:#334155;')
       + cell(row.number, 'white-space:nowrap;color:' + (row.hasColor ? '#dc2626' : '#334155') + ';')
-      + '<td style="' + escapeHtmlAttr(textStyle + 'color:#334155;') + '">' + promptHtml + '</td></tr>';
+      + '<td style="' + escapeHtmlAttr(textStyle + 'color:#334155;') + '"><pre style="margin:0;font:inherit;white-space:pre-wrap;">' + promptHtml + '</pre></td>'
+      + cell('素材', 'color:#334155;') + '<td style="vertical-align:top;white-space:nowrap;color:#334155;">' + flowSpeechSeconds(row.speechText) + '</td></tr>';
   }).join('') + '</tbody></table>';
-  const text = rows.map(row => [frameName(row), includeTail ? frameName(row) : '', row.number, row.text].map(flowPromptTsvCell).join('\t')).join('\n');
+  const text = rows.map(row => [frameName(row), includeTail ? frameName(row) : '', row.number, row.text, '素材', flowSpeechSeconds(row.speechText)].map(flowPromptTsvCell).join('\t')).join('\n');
   return { text, html };
 }
 
@@ -5108,7 +5135,8 @@ async function flowExportVideoPrompts(container, button) {
 
   // 这次明确点击“拷贝全部”且成功后，只标记实际写入的当前卡片。
   if (outer.style.display !== 'none') snapshots.forEach(snapshot => flowRecordCopied(snapshot.box, snapshot));
-  flowToast('已拷贝 ' + snapshots.length + ' 行提示词表格');
+  const unknownSpeech = snapshots.filter(snapshot => flowSpeechCharCount(snapshot.speechText) === 0).length;
+  flowToast('已拷贝 ' + snapshots.length + ' 行提示词表格' + (unknownSpeech ? '（' + unknownSpeech + ' 行未识别口播文案，暂按10秒）' : ''));
   return true;
 }
 
