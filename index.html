@@ -651,6 +651,7 @@ input[type=text],textarea,select,#lines2{background-color:var(--bg-input)!import
       <div id="output2Container" class="card" style="display:none" role="region" aria-labelledby="videoPromptsHeading">
         <div id="copyAllVideoPromptsToolbar" class="prompt-results-header" style="display:none">
           <h2 class="card-title" id="videoPromptsHeading" style="margin-bottom:0">提示词</h2>
+          <button class="btn" type="button" id="toggleAllVideoCardsBtn" data-flow-onmousedown="event.preventDefault()" data-flow-onclick="toggleAllVideoCards()" style="padding:4px 12px;font-size:12px;color:var(--blue-600);border-color:var(--border-input)" title="一键折叠或展开所有提示词正文">一键折叠</button>
           <button class="copy-btn" type="button" id="copyAllVideoPromptsBtn" disabled data-flow-onmousedown="event.preventDefault()" data-flow-onclick="copyAllVideoPrompts()" title="拷贝全部分镜为六列表格：首帧、尾帧、分镜片段、分镜提示词、素材模式、秒数；秒数按口播文案字符数估算">拷贝全部</button>
         </div>
         <div id="videoScrollOuter" style="position:relative;display:none">
@@ -884,7 +885,7 @@ input[type=text],textarea,select,#lines2{background-color:var(--bg-input)!import
     'selectLibraryRange2', 'selectMode', 'selectSmileTag', 'selectSmileTag2', 'selectSpeaker', 'selectSplitDir',
     'switchGroup', 'switchPage', 'switchVTab1', 'switchVTab2', 'toggleLangPop', 'toggleLibrary',
     'toggleLibrary2', 'toggleLibrarySelect', 'toggleLibrarySelect2', 'toggleMaterialLine', 'toggleMaterialLine2', 'toggleSidebar',
-    'toggleSidebar2', 'toggleVCard', 'toggleVideoGroup1', 'toggleVideoGroup2', 'useLibraryItem', 'useLibraryItem2',
+    'toggleSidebar2', 'toggleVCard', 'toggleAllVideoCards', 'toggleVideoGroup1', 'toggleVideoGroup2', 'useLibraryItem', 'useLibraryItem2',
     'v2OpenPicker', 'v2ResetAllPicks',
   ]);
 
@@ -4706,6 +4707,7 @@ function generateVideo() {
     });
     showVideoScroll();
     applyCopiedBlue();
+    syncAllVideoCardsButton();
   }
 }
 
@@ -4840,6 +4842,42 @@ function toggleVCard(id) {
     }
   }
   if (arrow) arrow.textContent = show ? '▾' : '▸';
+}
+
+// 一键折叠/展开所有单条提示词卡片；不影响外层分组、Prompt/原文切换和复制功能。
+function syncAllVideoCardsButton() {
+  const wrap = document.getElementById('videoCardsContainer');
+  const button = document.getElementById('toggleAllVideoCardsBtn');
+  if (!wrap || !button) return;
+  const cards = Array.from(wrap.querySelectorAll('.video-card'));
+  if (!cards.length) { button.textContent = '一键折叠'; return; }
+  const bodies = cards.map(card => Array.from(card.children).find(child => /_body$/.test(child.id || ''))).filter(Boolean);
+  const allCollapsed = bodies.length > 0 && bodies.every(body => body.style.display === 'none');
+  button.textContent = allCollapsed ? '一键展开' : '一键折叠';
+  button.title = allCollapsed ? '一键展开所有提示词正文' : '一键折叠所有提示词正文';
+}
+
+function toggleAllVideoCards() {
+  const wrap = document.getElementById('videoCardsContainer');
+  if (!wrap) return;
+  const cards = Array.from(wrap.querySelectorAll('.video-card'));
+  if (!cards.length) return;
+  const bodies = cards.map(card => ({
+    card,
+    body: Array.from(card.children).find(child => /_body$/.test(child.id || '')),
+    arrow: card.querySelector('[id$="_arrow"]')
+  })).filter(item => item.body);
+  const collapse = bodies.some(item => item.body.style.display !== 'none');
+  bodies.forEach(({card, body, arrow}) => {
+    body.style.display = collapse ? 'none' : '';
+    card.classList.toggle('is-expanded', !collapse);
+    if (card.dataset.collapseKey) {
+      if (collapse) flowCollapsedVCards.add(card.dataset.collapseKey);
+      else flowCollapsedVCards.delete(card.dataset.collapseKey);
+    }
+    if (arrow) arrow.textContent = collapse ? '▸' : '▾';
+  });
+  syncAllVideoCardsButton();
 }
 /* ── 拷贝状态只绑定实际点击拷贝成功的当前 DOM 卡片，不从文案哈希恢复或传播。 ── */
 const flowCopiedReceipts = new WeakMap();
