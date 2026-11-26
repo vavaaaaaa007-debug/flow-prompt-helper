@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-4ECHJrD6SR5hxnh8YsIsg+DhmHcIUix1eihMvi6ONHc='; script-src-elem 'self' 'sha256-4ECHJrD6SR5hxnh8YsIsg+DhmHcIUix1eihMvi6ONHc='; script-src-attr 'none'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; manifest-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-k9ZuQSQfTHu9JyN0UFUYtbJ3sa2qtkV6S1QPTD9rsu8='; script-src-elem 'self' 'sha256-k9ZuQSQfTHu9JyN0UFUYtbJ3sa2qtkV6S1QPTD9rsu8='; script-src-attr 'none'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; manifest-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
 <title>Flow Prompt 生成器</title>
 <style>
 /* Omni 粘贴框富文本：序号标记高亮、占位符、颜色圆点 */
@@ -482,6 +482,7 @@ input[type=text],textarea,select,#lines2{background-color:var(--bg-input)!import
         <option value="hu">匈牙利语</option>
         <option value="el">希腊语</option>
         <option value="hy">亚美尼亚语</option>
+        <option value="lt">立陶宛语</option>
       </select>
     </span>
     <button class="nav-lang-ico" data-flow-onclick="toggleLangPop(event)" title="语种">🌍</button>
@@ -506,6 +507,7 @@ input[type=text],textarea,select,#lines2{background-color:var(--bg-input)!import
       <div data-lang="hu" data-flow-onclick="navLangPick('hu')">匈牙利语</div>
       <div data-lang="el" data-flow-onclick="navLangPick('el')">希腊语</div>
       <div data-lang="hy" data-flow-onclick="navLangPick('hy')">亚美尼亚语</div>
+      <div data-lang="lt" data-flow-onclick="navLangPick('lt')">立陶宛语</div>
     </div>
   </div>
 
@@ -829,6 +831,7 @@ input[type=text],textarea,select,#lines2{background-color:var(--bg-input)!import
             <div style="margin-left:auto;display:flex;align-items:center;gap:6px;flex-shrink:0">
               <p class="hint" style="margin-top:0">共 <span id="lineCount2">0</span> 条</p>
               <input type="hidden" id="splitSec2" value="10">
+              <select id="splitSecSel2" aria-label="每行最长秒数" title="每行最长几秒（每个语种分别记住）：选 8 秒，每行最多 8 秒的字符；选 10 秒，每行最多 10 秒。切换后再点「自动分行」生效" style="height:26px;padding:0 4px;border:1px solid var(--border-input);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:12px;cursor:pointer;flex-shrink:0"><option value="10">10秒</option><option value="8">8秒</option></select>
               <button data-flow-onmousedown="event.preventDefault()" data-flow-onclick="autoSplit2()" title="选中几行：只重排选中的行；不选：整篇重排" style="padding:4px 12px;border:1px solid var(--border-input);border-radius:8px;background:rgba(255,255,255,.8);cursor:pointer;font-size:12px;color:var(--blue-600);flex-shrink:0">⚡ 自动分行</button>
             </div>
           </div>
@@ -998,7 +1001,7 @@ input[type=text],textarea,select,#lines2{background-color:var(--bg-input)!import
 <div class="overlay" id="flowTailFrameOverlay" aria-hidden="true">
   <div class="modal confirm-modal" role="dialog" aria-modal="true" aria-labelledby="flowTailFrameTitle" tabindex="-1">
     <h2 id="flowTailFrameTitle">选择素材模式</h2>
-    <div class="confirm-message">“素材模式”列按选择填“素材”或“帧”。首帧图片名按主序号生成，如 01，尾帧列留空；秒数按口播字符数估算（不含空格和标点）：40 字以内 4 秒，41–70 字 6 秒，71–100 字 8 秒，101 字起 10 秒。</div>
+    <div class="confirm-message">“素材模式”列按选择填“素材”或“帧”。首帧图片名按主序号生成，如 01，尾帧列留空；秒数按口播字符数估算（不含空格和标点）：40 字以内 4 秒，41–70 字 6 秒，71–100 字 8 秒，101 字起 10 秒。法语按含空格和标点的字符数：50 以内 4 秒，95 以内 6 秒，135 以内 8 秒，再长 10 秒。</div>
     <div class="modal-btns">
       <button class="btn" type="button" id="flowTailFrameCancel">取消</button>
       <button class="btn primary" type="button" id="flowTailFrameNo">素材</button>
@@ -4235,6 +4238,37 @@ function flowRenderSaved() {
 function flowSavedSearch(v) { flowSavedQuery = String(v || ''); flowRenderSaved(); }
 
 /* ── v_1_47：保存文件（本地打开用浏览器下载；在 claude.ai 链接里用 downloads 能力，需观看者确认） ── */
+// v_1_48：页面保存不了文件时（在线链接的某些打开方式），弹框让用户复制内容或再试直接下载
+function flowSaveFallback(filename, text, viaLink) {
+  const old = document.getElementById('flowSaveFallback');
+  if (old) old.remove();
+  const mk = function(tag, css, txt){ const e = document.createElement(tag); if (css) e.style.cssText = css; if (txt != null) e.textContent = txt; return e; };
+  const ov = mk('div', 'position:fixed;inset:0;z-index:99999;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;padding:16px');
+  ov.id = 'flowSaveFallback';
+  const box = mk('div', 'background:var(--bg-card,#fff);color:var(--text-primary,#0f172a);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.25);width:min(560px,100%);max-height:90vh;display:flex;flex-direction:column;gap:10px;padding:18px');
+  box.appendChild(mk('div', 'font-size:16px;font-weight:600', '导出：' + filename));
+  box.appendChild(mk('div', 'font-size:13px;line-height:1.6;color:var(--text-secondary,#475569)', '当前打开方式不能直接保存文件。可以先点「尝试下载」；如果没有下载，点「复制内容」，粘贴到记事本，保存成 ' + filename + '，之后用「导入预设」选这个文件即可。'));
+  const ta = mk('textarea', 'width:100%;box-sizing:border-box;min-height:180px;flex:1;font:12px/1.5 ui-monospace,Menlo,monospace;border:1px solid var(--border-input,#cbd5e1);border-radius:8px;padding:8px;resize:vertical;background:var(--bg-input,#f8fafc);color:inherit');
+  ta.readOnly = true; ta.value = text;
+  box.appendChild(ta);
+  const row = mk('div', 'display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap');
+  const btn = function(label, primary){ return mk('button', 'padding:6px 14px;border-radius:8px;font-size:13px;cursor:pointer;border:1px solid ' + (primary ? 'var(--blue-600,#2563eb);background:var(--blue-600,#2563eb);color:#fff' : 'var(--border-input,#cbd5e1);background:transparent;color:inherit'), label); };
+  const bDl = btn('尝试下载'), bCp = btn('复制内容', true), bX = btn('关闭');
+  bDl.type = bCp.type = bX.type = 'button';
+  bDl.addEventListener('click', function(){ try { viaLink(); } catch(e) {} });
+  bCp.addEventListener('click', function(){
+    const done = function(){ bCp.textContent = '已复制'; flowToast('已复制，粘贴到记事本保存成 ' + filename); };
+    const legacy = function(){ ta.focus(); ta.select(); let ok = false; try { ok = document.execCommand('copy'); } catch(e) {} if (ok) done(); else flowToast('复制失败，请在框里全选（Ctrl/⌘+A）后手动复制', 'error'); };
+    try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, legacy); return; } } catch(e) {}
+    legacy();
+  });
+  bX.addEventListener('click', function(){ ov.remove(); });
+  ov.addEventListener('click', function(e){ if (e.target === ov) ov.remove(); });
+  row.appendChild(bDl); row.appendChild(bCp); row.appendChild(bX);
+  box.appendChild(row);
+  ov.appendChild(box);
+  document.body.appendChild(ov);
+}
 function flowSaveFile(filename, text) {
   const viaLink = function(){
     const blob = new Blob([text], { type: 'application/json' });
@@ -4247,16 +4281,16 @@ function flowSaveFile(filename, text) {
   const cl = window.claude;
   if (!cl || typeof cl.use !== 'function') { viaLink(); return; }
   cl.use('downloads').then(function(dl){
-    if (!dl) { flowToast('当前页面不支持保存文件，请下载本地版使用导出', 'error'); return; }
+    if (!dl) { flowSaveFallback(filename, text, viaLink); return; }
     return dl.save({ filename: filename, data: text }).then(function(){
       flowToast('已保存 ' + filename);
     }, function(err){
       const code = err && err.code;
       if (code === 'declined') return;
       if (code === 'rate_limited') { flowToast('已有一个保存提示未处理，请稍后再试', 'error'); return; }
-      flowToast('保存失败' + (code ? '（' + code + '）' : ''), 'error');
+      flowSaveFallback(filename, text, viaLink);
     });
-  });
+  }, function(){ flowSaveFallback(filename, text, viaLink); });
 }
 
 /* ── 导出 / 导入 ── */
@@ -5086,7 +5120,7 @@ function _reflowOmniChunk(chunkLines){
       t = flowPreprocessLang(t, langR);
     }
     if (t.trim()){
-      const segsR = flowSplitPunctLines(t, langR, true); // v_1_46：按标点切段，打包成 80~120 字符的行
+      const segsR = flowSplitPunctLines(t, langR, flowOmniSplitArg()); // v_1_46：按标点切段，打包成 80~120 字符的行
       const linesR = langR === 'pt'
         ? _postOmniLines(segsR.map(function(sg){ return sg.body + sg.endMark; }), t)
         : segsR.map(function(sg){ return flowFinishLine(sg.body, sg.endMark); }).filter(Boolean);
@@ -5204,7 +5238,7 @@ function autoSplit2() {
   const finalBatches = batches.map(batchLines => {
     const { libIdx, rest } = extractLibLabel(batchLines);
     const segText = rest.join(' ');
-    const segs = flowSplitPunctLines(segText, lang2, true); // v_1_46：按标点切段，打包成 80~120 字符的行
+    const segs = flowSplitPunctLines(segText, lang2, flowOmniSplitArg()); // v_1_46：按标点切段，打包成 80~120 字符的行
     const processed = lang2 === 'pt'
       ? _postOmniLines(segs.map(function(sg){ return sg.body + sg.endMark; }), segText)
       : segs.map(function(sg){ return flowFinishLine(sg.body, sg.endMark); }).filter(Boolean);
@@ -5913,7 +5947,19 @@ function flowSpeechCharCount(text) {
 }
 
 const FLOW_NOSPACE_RATIO = 1; // v_1_48：按用户要求，不计空格和标点后仍用 53 / 80 / 120 和每行 144
+// v_1_48：法语按含空格和标点的字符数计（连续空白算一个空格，首尾空白不算）
+function flowFrCharCount(text) {
+  if (typeof text !== 'string') return 0;
+  const t = text.normalize('NFC').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\u200B-\u200D\uFEFF]/g, '').replace(/\s+/gu, ' ').trim();
+  return Array.from(t).length;
+}
+// 法语字符数 → 秒数：≤50 为 4 秒，≤95 为 6 秒，≤135 为 8 秒，其余 10 秒（每行最多 170）
+const FLOW_FR_SEC = { s4: 50, s6: 95, s8: 135, s10: 170 };
 function flowSpeechSeconds(text) {
+  if (((typeof flowGetLang === 'function') ? flowGetLang() : 'pt') === 'fr') {
+    const n = flowFrCharCount(text);
+    return n === 0 ? 10 : n <= FLOW_FR_SEC.s4 ? 4 : n <= FLOW_FR_SEC.s6 ? 6 : n <= FLOW_FR_SEC.s8 ? 8 : 10;
+  }
   const chars = flowSpeechCharCount(text);
   // 按用户提供的 40 条葡语样例校准；无法识别时保守使用最大档，不截断原文。
   // v_1_48：新增 4 秒档（≤53 字符，按 6 秒档 80 字符等比例折算）；中文按字数比例缩放
@@ -6917,9 +6963,10 @@ const FLOW_LANGS = {
   hu: { label: '匈牙利语', navProof: '中匈校对', foreignLabel: '匈牙利语', foreignPair: '中匈', per8: 120, percent: 'százalék' },
   el: { label: '希腊语', navProof: '中希校对', foreignLabel: '希腊语', foreignPair: '中希', per8: 120, percent: 'τοις εκατό' },
   hy: { label: '亚美尼亚语', navProof: '中亚美校对', foreignLabel: '亚美尼亚语', foreignPair: '中亚美', per8: 120, percent: 'տոկոս' },
+  lt: { label: '立陶宛语', navProof: '中立校对', foreignLabel: '立陶宛语', foreignPair: '中立', per8: 120, percent: 'procentų' },
   // v_1_48：按用户要求去掉简体/繁体中文口播语种（之前选过中文的会自动回到葡语）
 };
-const FLOW_DEC_WORD = { en: 'point', fr: 'virgule', ar: 'فاصلة', sw: 'nukta', es: 'coma', it: 'virgola', de: 'Komma', nl: 'komma', ro: 'virgulă', pl: 'przecinek', ru: 'запятая', uk: 'кома', bg: 'запетая', sr: 'zarez', hr: 'zarez', sk: 'čiarka', hu: 'egész', el: 'κόμμα', hy: 'ամբողջ' };
+const FLOW_DEC_WORD = { en: 'point', fr: 'virgule', ar: 'فاصلة', sw: 'nukta', es: 'coma', it: 'virgola', de: 'Komma', nl: 'komma', ro: 'virgulă', pl: 'przecinek', ru: 'запятая', uk: 'кома', bg: 'запетая', sr: 'zarez', hr: 'zarez', sk: 'čiarka', hu: 'egész', el: 'κόμμα', hy: 'ամբողջ', lt: 'kablelis' };
 const FLOW_ABBR_DOT = '';
 // v_1_47：经文“chapter X, verse Y”中间的逗号先用占位符，分行时不会在这里断开，输出时再换回逗号
 const FLOW_REF_COMMA = '\uE010';
@@ -7209,6 +7256,25 @@ function _numWordsEL(n){
   if (rest) out.push(g(rest, false));
   return out.join(' ');
 }
+// 立陶宛语：各词之间空格；tūkstantis / tūkstančiai / tūkstančių 按数变（末位 1；2-9；0 或 10-20）
+function _flowLt3(n, f){ const l1 = n % 10, l2 = n % 100; if (l1 === 0 || (l2 >= 10 && l2 <= 20)) return f[2]; return l1 === 1 ? f[0] : f[1]; }
+function _numWordsLT(n){
+  if (n === 0) return 'nulis';
+  const o = ['','vienas','du','trys','keturi','penki','šeši','septyni','aštuoni','devyni','dešimt','vienuolika','dvylika','trylika','keturiolika','penkiolika','šešiolika','septyniolika','aštuoniolika','devyniolika'];
+  const tens = ['','','dvidešimt','trisdešimt','keturiasdešimt','penkiasdešimt','šešiasdešimt','septyniasdešimt','aštuoniasdešimt','devyniasdešimt'];
+  function g(x){
+    const w = [], h = Math.floor(x / 100), r = x % 100;
+    if (h) w.push(h === 1 ? 'šimtas' : o[h] + ' šimtai');
+    if (r){ if (r < 20) w.push(o[r]); else { w.push(tens[Math.floor(r / 10)]); if (r % 10) w.push(o[r % 10]); } }
+    return w.join(' ');
+  }
+  const out = [];
+  const mi = Math.floor(n / 1e6), th = Math.floor(n / 1e3) % 1000, rest = n % 1000;
+  if (mi) out.push((mi === 1 ? 'vienas' : g(mi)) + ' ' + _flowLt3(mi, ['milijonas','milijonai','milijonų']));
+  if (th) out.push((th === 1 ? '' : g(th) + ' ') + _flowLt3(th, ['tūkstantis','tūkstančiai','tūkstančių']));
+  if (rest) out.push(g(rest));
+  return out.join(' ');
+}
 // 亚美尼亚语：十位与个位连写（քսանմեկ）
 function _numWordsHY(n){
   if (n === 0) return 'զրո';
@@ -7321,7 +7387,7 @@ function _numWordsRO(n){
   if (rest) out.push(u1000(rest, false));
   return out.join(' ');
 }
-const FLOW_NUM_FN_EU = { es: _numWordsES, it: _numWordsIT, de: _numWordsDE, nl: _numWordsNL, ro: _numWordsRO, pl: _numWordsPL, ru: _numWordsRU, uk: _numWordsUK, bg: _numWordsBG, sr: _numWordsSR, hr: _numWordsHR, sk: _numWordsSK, hu: _numWordsHU, el: _numWordsEL, hy: _numWordsHY };
+const FLOW_NUM_FN_EU = { es: _numWordsES, it: _numWordsIT, de: _numWordsDE, nl: _numWordsNL, ro: _numWordsRO, pl: _numWordsPL, ru: _numWordsRU, uk: _numWordsUK, bg: _numWordsBG, sr: _numWordsSR, hr: _numWordsHR, sk: _numWordsSK, hu: _numWordsHU, el: _numWordsEL, hy: _numWordsHY, lt: _numWordsLT };
 // 百分号读法（斯拉夫语按数变格；小数用单数属格）
 function flowPercentWord(lang, num){
   const cfg = FLOW_LANGS[lang] || {};
@@ -7330,6 +7396,7 @@ function flowPercentWord(lang, num){
   if (lang === 'ru') return isDec ? 'процента' : _flowPl3(n, ['процент','процента','процентов']);
   if (lang === 'uk') return isDec ? 'відсотка' : _flowPl3(n, ['відсоток','відсотки','відсотків']);
   if (lang === 'sk') return isDec ? 'percenta' : (n === 1 ? 'percento' : (n >= 2 && n <= 4 ? 'percentá' : 'percent'));
+  if (lang === 'lt') return isDec ? 'procento' : _flowLt3(n, ['procentas','procentai','procentų']);
   if (lang === 'bg') return (n === 1 && !isDec) ? 'процент' : 'процента';
   if (lang === 'sr') return _flowSrCyr ? 'посто' : 'posto';
   return cfg.percent;
@@ -7472,7 +7539,7 @@ function _zhMidMark(mark){
 }
 // 按标点切段，再按字数打包成行
 function flowZhSplitLines(text, lang, use10s){
-  const b = use10s ? FLOW_LINE_BUDGET_ZH.s10 : FLOW_LINE_BUDGET_ZH.s8, MINC = b.min, MAXC = b.max;
+  const b = use10s === '8s' ? FLOW_LINE_BUDGET_ZH.s8 : use10s ? FLOW_LINE_BUDGET_ZH.s10 : FLOW_LINE_BUDGET_ZH.s8, MINC = b.min, MAXC = b.max;
   let t = String(text == null ? '' : text).replace(/\s*\n\s*/g, '');
   t = t.replace(/([　-〿㐀-鿿豈-﫿＀-￯“”‘’「」『』…])[ \t]+(?=[　-〿㐀-鿿豈-﫿＀-￯“”‘’「」『』…])/g, '$1');
   const CLOSE = '”’」』';
@@ -8016,6 +8083,10 @@ const FLOW_BAD = {
   hy: {
     end: new Set('և ու կամ բայց որ թե ի մեջ հետ համար մասին վրա տակ առաջ հետո առանց դեպի մի իմ քո նրա մեր ձեր այս այդ այն շատ չի չէ'.split(' ')),
     start: new Set('և ու կամ բայց որ թե ինչպես երբ որտեղ հետ համար մասին վրա տակ առաջ հետո առանց դեպի'.split(' '))
+  },
+  lt: {
+    end: new Set('ir bei ar o bet arba kad nes jog į iš su be po prie per už nuo iki ant apie dėl prieš tarp pas ne nei kaip mano tavo jo jos mūsų jūsų šis ši šitas tas ta labai'.split(' ')),
+    start: new Set('ir bei ar o bet arba kad nes jog kaip kai kur kuris kuri kurie į iš su be po prie per už nuo iki ant apie dėl prieš tarp pas mane man tau jam jai mums jums jiems'.split(' '))
   }
 };
 // v_1_47：塞尔维亚语虚词同时收西里尔写法
@@ -8029,6 +8100,19 @@ function flowGetLang(){
     if (el && own(el.value)) return el.value;
     const sv = localStorage.getItem('flow_lang');
     if (own(sv)) return sv;
+  } catch(e){}
+  return 'pt';
+}
+// v_1_48：打开页面时的语种：先用这台设备上次选的，没有就按浏览器语言，都不匹配用葡语
+function flowStartLang(){
+  const own = function(k){ return typeof k === 'string' && Object.prototype.hasOwnProperty.call(FLOW_LANGS, k); };
+  try { const sv = localStorage.getItem('flow_lang'); if (own(sv)) return sv; } catch(e){}
+  try {
+    const list = (navigator.languages && navigator.languages.length) ? navigator.languages : [navigator.language || ''];
+    for (let i = 0; i < list.length; i++){
+      const code = String(list[i] || '').toLowerCase().split(/[-_]/)[0];
+      if (own(code)) return code;
+    }
   } catch(e){}
   return 'pt';
 }
@@ -8237,6 +8321,7 @@ const FLOW_HOLY = {
   hu: new Set('isten istent istennek jézus jézust krisztus krisztust úr uram ámen'.split(' ')),
   el: new Set('θεός θεού θεό ιησούς ιησού χριστός χριστού κύριος κυρίου κύριε αμήν'.split(' ')),
   hy: new Set('աստված աստծո հիսուս քրիստոս տեր ամեն'.split(' ')),
+  lt: new Set('dievas dievo dievui dievą jėzus jėzaus jėzui kristus kristaus viešpats viešpaties viešpačiui amen'.split(' ')),
   de: new Set('gott jesus christus herr amen'.split(' '))
 };
 // v_1_48：呼求神的称呼在句中也保持大写（Господи / Panie / Doamne …）
@@ -8246,7 +8331,7 @@ const FLOW_HOLY = {
     nl: 'here heer', ro: 'isuse dumnezeule', pl: 'panie pan pana panu boże jezu ojcze',
     ru: 'господи боже отче иисусе', uk: 'господи боже отче ісусе', bg: 'господи боже отче исусе',
     sr: 'bože oče isuse боже оче исусе', hr: 'bože oče isuse', sk: 'pane bože otče ježišu pán pána pánovi',
-    hu: 'istenem atyám uram', el: 'θεέ πατέρα', hy: 'տեր հայր', sw: 'baba'
+    hu: 'istenem atyám uram', el: 'θεέ πατέρα', hy: 'տեր հայր', lt: 'dieve viešpatie tėve jėzau', sw: 'baba'
   };
   Object.keys(add).forEach(function(lg){ if (FLOW_HOLY[lg]) add[lg].split(' ').forEach(function(w){ FLOW_HOLY[lg].add(w); }); });
 })();
@@ -8431,6 +8516,10 @@ const FLOW_EYE_CFG = {
         youLow: 'դու|քեզ|քո|քեզնից|դուք|ձեզ|ձեր', condWord: 'եթե|երբ', cond: /(^|[^\p{L}])(եթե|երբ)\s+[^,։]*?\p{L}+\s+(ես|եք)(?![\p{L}])/iu, // եթե համաձայն ես（你同意）
         voc: 'Սիրելի Աստված|Սիրելի Տեր|Տեր|Հայր|Հիսուս|Տեր Հիսուս|Երկնային Հայր|Աստված իմ|Ով Աստված', pray: 'աղոթում եմ|աղոթում ենք|խնդրում եմ|խնդրում ենք',
         godPron: 'Դու|Քեզ|Քո|Քեզնից', bless: 'օրհնիր|պահպանիր|բուժիր|առաջնորդիր|լցրու|վերցրու|ազատիր|զորացրու', amen: 'ամեն' },
+  lt: { write: 'parašyk|parašykite|rašyk|rašykite|komentuok|komentuokite|pasidalink|pasidalinkite|dalinkis|dalinkitės|užsiprenumeruok|užsiprenumeruokite', say: 'sakyk|sakykite|pasakyk|pasakykite', conj: 'ir|bet|dabar|ne',
+        youLow: 'tu|tave|tau|tavo|tavimi|jūs|jus|jums|jūsų', condWord: 'jei|jeigu|kai', cond: /(^|[^\p{L}])(jei|jeigu|kai)\s+(tu\s+|jūs\s+)?(ir\s+|dar\s+)?\p{L}+(i|ate|ite)(?![\p{L}])/iu,
+        voc: 'Brangus Dieve|Mielas Dieve|Brangus Viešpatie|Viešpatie|Tėve|Jėzau|Dieve|Viešpatie Jėzau|Dangiškasis Tėve|Mano Dieve', pray: 'meldžiuosi|meldžiamės|prašau|prašome|skelbiu',
+        godPron: 'Tu|Tave|Tau|Tavo|Tavimi', bless: 'palaimink|apsaugok|išgydyk|vesk|pripildyk|paimk|išlaisvink|sustiprink', amen: 'amen' },
   ar: { write: 'اكتب|اكتبي|اكتبوا|علّق|علق|شارك|شاركي|شاركوا|انشر|انشري|اشترك', say: 'قل|قولي|قولوا', conj: 'و|لكن|الآن',
         youLow: 'أنت|أنتِ|لك|إليك|عليك|أنتم|لكم|لأجلك|من أجلك|معك|بك|عنك', condWord: 'إذا|إن|لو|عندما', cond: /(^|[^\p{L}])(إذا|إن|لو)\s+((كنت|كنتِ|كنتم|أنت|تؤمن|تؤمنين|تريد|تريدين|تحتاج|تحتاجين|توافق|توافقين)(?![\p{L}])|[^،,.!?]*\p{L}(ك|كِ|كم)(?![\p{L}]))/u,
         voc: 'إلهي العزيز|يا إلهي العزيز|ربي العزيز|أيها الرب العزيز|يا رب|يا يسوع|يا الله|ربي|يا ربي|إلهي|يا إلهي|يا أبانا|أيها الآب|يا ربّ|أيها الرب|أيها الرب يسوع|الرب يسوع|يا رب يسوع', pray: 'أصلي|نصلي|أطلب|نطلب|أتوسل|أعلن',
@@ -8535,9 +8624,19 @@ function _flowListNumSet(lang){
 function flowSplitPunctLines(text, lang, use10s){
   if (FLOW_ZH[lang]) return flowZhSplitLines(text, lang, use10s); // v_1_47 中文口播：按字数
   const BAD = (FLOW_BAD[lang] || FLOW_BAD.pt);
-  const _budgets = use10s ? FLOW_LINE_BUDGET_10S : FLOW_LINE_BUDGET_8S;
+  const _budgets = use10s === '8s' ? FLOW_LINE_BUDGET_8S : use10s ? FLOW_LINE_BUDGET_10S : FLOW_LINE_BUDGET_8S;
   const _bd = _budgets[lang] || _budgets.en;
-  const MINC = _bd.min, MAXC = _bd.max;
+  let MINC = _bd.min, MAXC = _bd.max;
+  // v_1_48：Omni 选「8 秒」时，每行最多到拷贝时算 8 秒的字符数（默认 100，亚美尼亚语 104），短行判断仍按 10 秒行的 4 / 6 秒
+  const _b10 = FLOW_LINE_BUDGET_10S[lang] || FLOW_LINE_BUDGET_10S.en;
+  if (use10s === '8s'){
+    const _k8 = lang === 'hy' ? 150 / 144 : FLOW_NOSPACE_RATIO;
+    MAXC = Math.min(MAXC, Math.round(100 * _k8));
+    MINC = Math.min(MINC, Math.round(MAXC * 0.75));
+  }
+  // v_1_48：法语按含空格和标点的字符数：10 秒 170、8 秒 135（校对页也按 8 秒）
+  const FR_MODE = lang === 'fr';
+  if (FR_MODE){ MAXC = use10s === true ? FLOW_FR_SEC.s10 : FLOW_FR_SEC.s8; MINC = FLOW_FR_SEC.s4; }
   let t = String(text == null ? '' : text);
   t = t.replace(/((?:chapter|chapitre)\s+[^,.?!;:\n]+?),(\s+(?:verse|verset)\s)/gi, '$1' + FLOW_REF_COMMA + '$2'); // v_1_47：经文 chapter X, verse Y 不在中间断行
   t = t.replace(/(?<![\p{L}\p{N}])(e\.g|i\.e|etc|Mr|Mrs|Ms|Dr|St|vs|M)\./giu, function(m){ return m.split('.').join(FLOW_ABBR_DOT); });
@@ -8609,7 +8708,8 @@ function flowSplitPunctLines(text, lang, use10s){
   // v_1_48：按字符数断行 — 行长越接近上限越好；同样接近时优先在句末（. ! ?）断，逗号处断要多付一点成本，
   // 这样不会为了凑字数把“vinte, trinta, quarenta…”这类并列从中间切开。最短行放宽到上限的 60%，允许 8 秒行。
   // 每行成本：4 秒以内（≤上限的 37%）重罚，6 秒以内（≤上限的 56%）轻罚；越接近上限越便宜；逗号处断比句末多一点
-  const T4 = Math.round(PMAX * 40 / 144), T6 = Math.round(PMAX * 80 / 144); // 断行用；拷贝时显示的秒数另按 40 / 70 / 120
+  const _TB = use10s === '8s' ? (FLOW_ZH[lang] ? _b10.max : Math.round(_b10.max * FLOW_NOSPACE_RATIO)) : PMAX; // 8 秒档：4 / 6 秒短行仍按 10 秒行折算
+  const T4 = Math.round(_TB * 40 / 144), T6 = Math.round(_TB * 80 / 144); // 断行用；拷贝时显示的秒数另按 40 / 70 / 120
   // v_1_48：按句判断闭眼/睁眼，两种不放在同一行
   const _sentOf = [], _sentTexts = [];
   items.forEach(function(it, k){
@@ -8752,6 +8852,41 @@ function flowSplitPunctLines(text, lang, use10s){
   };
   const cuts = [];
   (function(){
+    // v_1_48：法语——完整的句子不拆；放得下就把相邻整句并成一行（文案长多分行、短少分行）；
+    // 一句超过上限才在逗号等自然标点处拆，实在没有标点才在词与词之间拆，拆开的几段尽量一样长；
+    // 字符数含空格和标点。闭眼/睁眼交界照样必须断开，其余“不断的地方”沿用通用规则。
+    if (FR_MODE){
+      const uL = U.map(function(x){ return Array.from(x.w.split(FLOW_ABBR_DOT).join('.').split(FLOW_REF_COMMA).join(',')).length + (x.last ? 1 : 0); });
+      const uP = [0];
+      uL.forEach(function(v){ uP.push(uP[uP.length - 1] + v); });
+      const lenF = function(a, b){ return uP[b] - uP[a] + (b - a - 1) + (U[b - 1].last ? 0 : 1); };
+      let u0 = 0;
+      while (u0 < U.length){
+        const sE = segEndOf(u0), n = sE - u0;
+        const dp = new Array(n + 1).fill(Infinity), prv = new Array(n + 1).fill(-1);
+        dp[0] = 0;
+        for (let i = 1; i <= n; i++){
+          const e = u0 + i;
+          if (e < sE && !unitBreakOk(e)) continue;
+          // 断点类型：句末（或段尾）不罚；句中逗号处拆一句重罚；词中拆更重
+          const pen = e === sE ? 0 : (U[e - 1].last ? (isSentEnd(U[e - 1].k) ? 0 : 100000) : 200000);
+          for (let j = 0; j < i; j++){
+            if (dp[j] === Infinity) continue;
+            const L = lenF(u0 + j, e);
+            // 每多一行 40000（相邻整句放得下就合并）；L² 让拆开的几段尽量均匀；4 秒以内的短行再加一点
+            let c = dp[j] + 40000 + pen + L * L + (L < MINC ? (MINC - L) * (MINC - L) * 4 : 0);
+            if (L > MAXC) c += 1e8 + (L - MAXC) * (L - MAXC) * 100; // 超上限：只在没有别的断法时兜底
+            if (c < dp[i]){ dp[i] = c; prv[i] = j; }
+          }
+        }
+        const bs = [];
+        for (let i = n; i > 0 && prv[i] >= 0; i = prv[i]) bs.push([u0 + prv[i], u0 + i]);
+        if (!bs.length) bs.push([u0, sE]);
+        bs.reverse().forEach(function(b){ cuts.push(b); });
+        u0 = sE;
+      }
+      return;
+    }
     let u = 0;
     while (u < U.length){
       const sE = segEndOf(u);
@@ -9022,11 +9157,32 @@ function flowLangLabel(lang){
   return cfg.label;
 }
 function flowDefaultSpeakPreset(lang){
-  const SPEAK = { pt: '葡语', en: '英语', fr: '法语', ar: '阿拉伯语', sw: '斯瓦希里语', es: '西班牙语', it: '意大利语', de: '德语', nl: '荷兰语', ro: '罗马尼亚语', pl: '波兰语', ru: '俄语', uk: '乌克兰语', bg: '保加利亚语', sr: '塞尔维亚语', hr: '克罗地亚语', sk: '斯洛伐克语', hu: '匈牙利语', el: '希腊语', hy: '亚美尼亚语', zhs: '普通话', zht: '台湾国语' };
+  const SPEAK = { pt: '葡语', en: '英语', fr: '法语', ar: '阿拉伯语', sw: '斯瓦希里语', es: '西班牙语', it: '意大利语', de: '德语', nl: '荷兰语', ro: '罗马尼亚语', pl: '波兰语', ru: '俄语', uk: '乌克兰语', bg: '保加利亚语', sr: '塞尔维亚语', hr: '克罗地亚语', sk: '斯洛伐克语', hu: '匈牙利语', el: '希腊语', hy: '亚美尼亚语', lt: '立陶宛语', zhs: '普通话', zht: '台湾国语' };
   return '用' + (SPEAK[lang] || '葡语') + '平静地说：';
 }
+// v_1_48：Omni Prompt 页每行最长秒数（8 秒 / 10 秒），每个语种分别记住，默认 10 秒
+function flowSplitSecGet2(lang) {
+  lang = lang || ((typeof flowGetLang === 'function') ? flowGetLang() : 'pt');
+  try { return localStorage.getItem('flow_split_sec_' + lang) === '8' ? 8 : 10; } catch(e) { return 10; }
+}
+function flowOmniSplitArg() { return flowSplitSecGet2() === 8 ? '8s' : true; }
+function flowSyncSplitSec2() {
+  const sel = document.getElementById('splitSecSel2');
+  if (sel) sel.value = String(flowSplitSecGet2());
+}
+(function(){
+  const sel = document.getElementById('splitSecSel2');
+  if (!sel) return;
+  sel.addEventListener('change', function(){
+    const lang = (typeof flowGetLang === 'function') ? flowGetLang() : 'pt';
+    try { localStorage.setItem('flow_split_sec_' + lang, sel.value === '8' ? '8' : '10'); } catch(e) {}
+    const lab = (typeof FLOW_LANGS !== 'undefined' && FLOW_LANGS[lang]) ? FLOW_LANGS[lang].label : '';
+    if (typeof flowToast === 'function') flowToast(lab + '每行最长 ' + (sel.value === '8' ? '8' : '10') + ' 秒，点「自动分行」重新分行');
+  });
+})();
 function flowOnGlobalLangChange(){
   flowSaveLang();
+  try { flowSyncSplitSec2(); } catch(e){}
   const lang = flowGetLang();
   const cfg = FLOW_LANGS[lang] || FLOW_LANGS.pt;
   // v_1_47：对照库 / 文案框 / 输入提示 / 默认预设跟着语种改
@@ -11991,7 +12147,7 @@ window.addEventListener('DOMContentLoaded', function() {
   } catch(e){}
   // v_1_46：恢复全局语种选择
   try {
-    const _lg = flowGetLang(); const _sg = document.getElementById('langSelGlobal'); if (_sg) _sg.value = _lg;
+    const _lg = flowStartLang(); const _sg = document.getElementById('langSelGlobal'); if (_sg) _sg.value = _lg;
     flowOnGlobalLangChange();
   } catch(e){}
   try { flowSavedLoad(); flowSavedCountBadge(); } catch(e) {} // v_1_47 已保存数量
