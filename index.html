@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-k9ZuQSQfTHu9JyN0UFUYtbJ3sa2qtkV6S1QPTD9rsu8='; script-src-elem 'self' 'sha256-k9ZuQSQfTHu9JyN0UFUYtbJ3sa2qtkV6S1QPTD9rsu8='; script-src-attr 'none'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; manifest-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-7BFhWRa+CJq5eGMgwXc4ZAlMm1KJNprzDYN96TZaxCQ='; script-src-elem 'self' 'sha256-7BFhWRa+CJq5eGMgwXc4ZAlMm1KJNprzDYN96TZaxCQ='; script-src-attr 'none'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; manifest-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
 <title>Flow Prompt 生成器</title>
 <style>
 /* Omni 粘贴框富文本：序号标记高亮、占位符、颜色圆点 */
@@ -833,6 +833,7 @@ input[type=text],textarea,select,#lines2{background-color:var(--bg-input)!import
               <input type="hidden" id="splitSec2" value="10">
               <select id="splitSecSel2" aria-label="每行最长秒数" title="每行最长几秒（每个语种分别记住）：选 8 秒，每行最多 8 秒的字符；选 10 秒，每行最多 10 秒。切换后再点「自动分行」生效" style="height:26px;padding:0 4px;border:1px solid var(--border-input);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:12px;cursor:pointer;flex-shrink:0"><option value="10">10秒</option><option value="8">8秒</option></select>
               <button data-flow-onmousedown="event.preventDefault()" data-flow-onclick="autoSplit2()" title="选中几行：只重排选中的行；不选：整篇重排" style="padding:4px 12px;border:1px solid var(--border-input);border-radius:8px;background:rgba(255,255,255,.8);cursor:pointer;font-size:12px;color:var(--blue-600);flex-shrink:0">⚡ 自动分行</button>
+              <button data-flow-onmousedown="event.preventDefault()" data-flow-onclick="flowCopySplitText2()" title="拷贝框里断好行的全部文案（一行一句，【N】序号不拷贝，分组之间留空行）" style="padding:4px 12px;border:1px solid var(--border-input);border-radius:8px;background:rgba(255,255,255,.8);cursor:pointer;font-size:12px;color:var(--blue-600);flex-shrink:0">📋 拷贝文案</button>
             </div>
           </div>
         </div>
@@ -1103,7 +1104,7 @@ input[type=text],textarea,select,#lines2{background-color:var(--bg-input)!import
     'switchGroup', 'switchPage', 'switchVTab1', 'switchVTab2', 'toggleLangPop', 'toggleLibrary',
     'toggleLibrary2', 'toggleLibrarySelect', 'toggleLibrarySelect2', 'toggleMaterialLine', 'toggleMaterialLine2', 'toggleSidebar',
     'toggleSidebar2', 'toggleVCard', 'toggleVideoGroup1', 'toggleVideoGroup2', 'useLibraryItem', 'useLibraryItem2',
-    'v2OpenPicker', 'v2OpenGroupPicker', 'v2ResetAllPicks', 'flowSaveOmniRecord', 'flowSavedSearch', 'flowGoSaved',
+    'v2OpenPicker', 'v2OpenGroupPicker', 'flowCopySplitText2', 'v2ResetAllPicks', 'flowSaveOmniRecord', 'flowSavedSearch', 'flowGoSaved',
   ]);
 
   function flowInvoke(source, event, element) {
@@ -5208,6 +5209,28 @@ function clearV2CopiedMarks(){
 /* ==================== Omni 富文本基础设施结束 ==================== */
 
 
+// v_1_48：拷贝断行后的全部文案（去掉【N】序号行，分组之间保留一个空行）
+function flowCopySplitText2(){
+  const el = document.getElementById('lines2');
+  const raw = el ? String(el.value != null ? el.value : el.innerText || '') : '';
+  const text = raw.replace(/\r/g, '').split('\n')
+    .filter(function(l){ return !/^\s*【\s*\d+\s*】\s*$/.test(l); })
+    .map(function(l){ return l.replace(/\s+$/, ''); })
+    .join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  if (!text){ flowToast('框里还没有文案', 'error'); return; }
+  const n = text.split('\n').filter(function(l){ return l.trim(); }).length;
+  const done = function(){ flowToast('已拷贝 ' + n + ' 行文案'); };
+  const legacy = function(){
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
+    document.body.appendChild(ta); ta.select();
+    let ok = false; try { ok = document.execCommand('copy'); } catch(e) {}
+    ta.remove();
+    if (ok) done(); else flowToast('拷贝失败，请在框里全选后手动复制', 'error');
+  };
+  try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, legacy); return; } } catch(e) {}
+  legacy();
+}
 function autoSplit2() {
   const textarea = document.getElementById('lines2');
   // 在框内选中了若干行：只重排选中的行，其余不动
@@ -8659,7 +8682,7 @@ function flowSplitPunctLines(text, lang, use10s){
       const b = rawSegs[q].body.trim().toLowerCase();
       const prevEnd = q === 0 || /[.。?？!！…]/.test(rawSegs[q - 1].mark);
       if (prevEnd && (nums.has(b) || /^\d{1,2}$/.test(b))){
-        rawSegs[q + 1].body = rawSegs[q].body.trim() + ', ' + rawSegs[q + 1].body;
+        rawSegs[q + 1].body = rawSegs[q].body.trim() + ', ' + _flowFixMidCase(rawSegs[q + 1].body, lang); // v_1_48：序号后面的词改小写（Egy, a Biblián…）
         rawSegs[q + 1].listNum = true;
         rawSegs.splice(q, 1);
       }
@@ -8855,11 +8878,17 @@ function flowSplitPunctLines(text, lang, use10s){
     // v_1_48：法语——完整的句子不拆；放得下就把相邻整句并成一行（文案长多分行、短少分行）；
     // 一句超过上限才在逗号等自然标点处拆，实在没有标点才在词与词之间拆，拆开的几段尽量一样长；
     // 字符数含空格和标点。闭眼/睁眼交界照样必须断开，其余“不断的地方”沿用通用规则。
-    if (FR_MODE){
+    const DP_MODE = true; // v_1_48：所有语种都整句优先：能并整句就并，长句先在逗号处均匀拆，实在不行才在词中间断
+    const LMAX = FR_MODE ? MAXC : PMAX, LMIN = FR_MODE ? MINC : T4;
+    // 序号（Egy, / Kettő, …）尽量放在行首：一行中间夹着序号开头的句子要多付成本
+    const isLN = U.map(function(x){ return x.wi === 0 && !!items[x.k].listNum; });
+    const lnPref = [0];
+    isLN.forEach(function(v){ lnPref.push(lnPref[lnPref.length - 1] + (v ? 1 : 0)); });
+    if (DP_MODE){
       const uL = U.map(function(x){ return Array.from(x.w.split(FLOW_ABBR_DOT).join('.').split(FLOW_REF_COMMA).join(',')).length + (x.last ? 1 : 0); });
       const uP = [0];
       uL.forEach(function(v){ uP.push(uP[uP.length - 1] + v); });
-      const lenF = function(a, b){ return uP[b] - uP[a] + (b - a - 1) + (U[b - 1].last ? 0 : 1); };
+      const lenF = FR_MODE ? function(a, b){ return uP[b] - uP[a] + (b - a - 1) + (U[b - 1].last ? 0 : 1); } : lenU;
       let u0 = 0;
       while (u0 < U.length){
         const sE = segEndOf(u0), n = sE - u0;
@@ -8869,13 +8898,14 @@ function flowSplitPunctLines(text, lang, use10s){
           const e = u0 + i;
           if (e < sE && !unitBreakOk(e)) continue;
           // 断点类型：句末（或段尾）不罚；句中逗号处拆一句重罚；词中拆更重
-          const pen = e === sE ? 0 : (U[e - 1].last ? (isSentEnd(U[e - 1].k) ? 0 : 100000) : 200000);
+          const pen = e === sE ? 0 : (U[e - 1].last ? (isSentEnd(U[e - 1].k) ? 0 : 100000) : (FR_MODE ? 200000 : 320000)); // 能在逗号处断就不在词中断
           for (let j = 0; j < i; j++){
             if (dp[j] === Infinity) continue;
             const L = lenF(u0 + j, e);
             // 每多一行 40000（相邻整句放得下就合并）；L² 让拆开的几段尽量均匀；4 秒以内的短行再加一点
-            let c = dp[j] + 40000 + pen + L * L + (L < MINC ? (MINC - L) * (MINC - L) * 4 : 0);
-            if (L > MAXC) c += 1e8 + (L - MAXC) * (L - MAXC) * 100; // 超上限：只在没有别的断法时兜底
+            let c = dp[j] + 40000 + pen + L * L + (L < LMIN ? (LMIN - L) * (LMIN - L) * 4 : 0);
+            if (lnPref[e] - lnPref[u0 + j + 1] > 0) c += 60000; // 序号不在行首
+            if (L > LMAX) c += 1e8 + (L - LMAX) * (L - LMAX) * 100; // 超上限：只在没有别的断法时兜底
             if (c < dp[i]){ dp[i] = c; prv[i] = j; }
           }
         }
