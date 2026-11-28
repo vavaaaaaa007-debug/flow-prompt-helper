@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-7BFhWRa+CJq5eGMgwXc4ZAlMm1KJNprzDYN96TZaxCQ='; script-src-elem 'self' 'sha256-7BFhWRa+CJq5eGMgwXc4ZAlMm1KJNprzDYN96TZaxCQ='; script-src-attr 'none'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; manifest-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-HN0TjbdKsGT21vDj3nxTmQbTj1YFRJE/ccnHZgzCpzI='; script-src-elem 'self' 'sha256-HN0TjbdKsGT21vDj3nxTmQbTj1YFRJE/ccnHZgzCpzI='; script-src-attr 'none'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; manifest-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
 <title>Flow Prompt 生成器</title>
 <style>
 /* Omni 粘贴框富文本：序号标记高亮、占位符、颜色圆点 */
@@ -833,7 +833,7 @@ input[type=text],textarea,select,#lines2{background-color:var(--bg-input)!import
               <input type="hidden" id="splitSec2" value="10">
               <select id="splitSecSel2" aria-label="每行最长秒数" title="每行最长几秒（每个语种分别记住）：选 8 秒，每行最多 8 秒的字符；选 10 秒，每行最多 10 秒。切换后再点「自动分行」生效" style="height:26px;padding:0 4px;border:1px solid var(--border-input);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:12px;cursor:pointer;flex-shrink:0"><option value="10">10秒</option><option value="8">8秒</option></select>
               <button data-flow-onmousedown="event.preventDefault()" data-flow-onclick="autoSplit2()" title="选中几行：只重排选中的行；不选：整篇重排" style="padding:4px 12px;border:1px solid var(--border-input);border-radius:8px;background:rgba(255,255,255,.8);cursor:pointer;font-size:12px;color:var(--blue-600);flex-shrink:0">⚡ 自动分行</button>
-              <button data-flow-onmousedown="event.preventDefault()" data-flow-onclick="flowCopySplitText2()" title="拷贝框里断好行的全部文案（一行一句，【N】序号不拷贝，分组之间留空行）" style="padding:4px 12px;border:1px solid var(--border-input);border-radius:8px;background:rgba(255,255,255,.8);cursor:pointer;font-size:12px;color:var(--blue-600);flex-shrink:0">📋 拷贝文案</button>
+              <button data-flow-onmousedown="event.preventDefault()" data-flow-onclick="flowCopySplitText2()" title="拷贝框里断好行的全部文案（一行一句，【N】序号不拷贝，分组之间留空行）。葡语：一个文案一个格子，每行前面带秒数，保留颜色，直接粘贴到表格" style="padding:4px 12px;border:1px solid var(--border-input);border-radius:8px;background:rgba(255,255,255,.8);cursor:pointer;font-size:12px;color:var(--blue-600);flex-shrink:0">📋 拷贝文案</button>
             </div>
           </div>
         </div>
@@ -5210,8 +5210,112 @@ function clearV2CopiedMarks(){
 
 
 // v_1_48：拷贝断行后的全部文案（去掉【N】序号行，分组之间保留一个空行）
+function _flowColorInt(c){
+  if (!c) return null;
+  c = String(c).trim();
+  let m = /^#([0-9a-f]{6})$/i.exec(c);
+  if (m) return parseInt(m[1], 16);
+  m = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/i.exec(c);
+  if (m) return parseInt(m[1] + m[1] + m[2] + m[2] + m[3] + m[3], 16);
+  m = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i.exec(c);
+  if (m) return (+m[1] << 16) + (+m[2] << 8) + (+m[3]);
+  try { const d = document.createElement('span'); d.style.color = c; document.body.appendChild(d); const r = getComputedStyle(d).color; d.remove(); m = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i.exec(r); if (m) return (+m[1] << 16) + (+m[2] << 8) + (+m[3]); } catch(e) {}
+  return null;
+}
+// v_1_48：葡语——拷贝成表格：一个文案一个格子，每行前面写秒数，保留颜色
+function _flowCopyPtTable2(el){
+  const text = _ln2Plain(el).replace(/\r/g, '');
+  if (!text.trim()) return false;
+  let ranges = [];
+  try { const segs = _ln2CollectSegs(el); ranges = segs.length ? _ln2MatchSegs(text, segs) : []; } catch(e) { ranges = []; }
+  const colorAt = function(i){ for (let r = 0; r < ranges.length; r++){ if (i >= ranges[r].start && i < ranges[r].end) return ranges[r].color; } return ''; };
+  const esc = function(t){ return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
+  const hasMark = /^[ \t]*【\s*\d+\s*】[ \t]*$/m.test(text);
+  const groups = []; let cur = null, off = 0;
+  text.split('\n').forEach(function(line){
+    const st = off; off += line.length + 1;
+    const t = line.trim();
+    if (/^【\s*\d+\s*】$/.test(t)){ cur = []; groups.push(cur); return; }
+    if (!t){ if (!hasMark) cur = null; return; }
+    if (!cur){ cur = []; groups.push(cur); }
+    // 这一行按颜色切成小段
+    const lead = line.length - line.replace(/^\s+/, '').length;
+    const a = st + lead, b = st + line.replace(/\s+$/, '').length;
+    const parts = []; let ps = a, pc = colorAt(a);
+    for (let i = a + 1; i <= b; i++){ const c = i < b ? colorAt(i) : null; if (i === b || c !== pc){ parts.push({ t: text.slice(ps, i), c: pc }); ps = i; pc = c; } }
+    cur.push({ text: t, parts: parts, sec: flowSpeechSeconds(t) });
+  });
+  const rows = groups.filter(function(g){ return g.length; });
+  if (!rows.length) return false;
+  const lineCount = rows.reduce(function(n, g){ return n + g.length; }, 0);
+  // 按 Google 表格自己的剪贴板格式写（带 google-sheets-html-origin 标记），格子里的换行用 <br/>，粘贴时留在同一个格子里
+  const html = '<meta charset="utf-8"><google-sheets-html-origin><style type="text/css"><!--td {border: 1px solid #cccccc;}br {mso-data-placement:same-cell;}--></style>'
+    + '<table xmlns="http://www.w3.org/1999/xhtml" cellspacing="0" cellpadding="0" dir="ltr" border="1" style="table-layout:fixed;font-size:10pt;font-family:Arial;width:0px;border-collapse:collapse;border:none"><colgroup><col width="600"/></colgroup><tbody>' + rows.map(function(g){
+    // Google 表格按 data-sheets-value 取格子内容（里面的 \n 就是格子内换行），按 data-sheets-textstyleruns 取每段文字的颜色
+    let val = '', runs = '';
+    g.forEach(function(l, li){
+      if (li) val += '\n';
+      val += '【' + l.sec + '秒】';
+      l.parts.forEach(function(pt){
+        const ci = _flowColorInt(pt.c);
+        if (ci != null){ runs += JSON.stringify({ 1: val.length, 2: { 2: { 1: 2, 2: ci } } }); val += pt.t; runs += JSON.stringify({ 1: val.length }); }
+        else val += pt.t;
+      });
+    });
+    const dv = ' data-sheets-value="' + esc(JSON.stringify({ 1: 2, 2: val })) + '"' + (runs ? ' data-sheets-textstyleruns="' + esc(runs) + '"' : '');
+    return '<tr style="height:21px;"><td style="overflow:hidden;padding:2px 3px 2px 3px;vertical-align:top;wrap-strategy:4;white-space:normal;"' + dv + '>' + g.map(function(l){
+      return esc('【' + l.sec + '秒】') + l.parts.map(function(pt){ return pt.c ? '<span style="color:' + esc(pt.c) + ';">' + esc(pt.t) + '</span>' : esc(pt.t); }).join('');
+    }).join('<br/>') + '</td></tr>';
+  }).join('') + '</tbody></table></google-sheets-html-origin>';
+  const plain = rows.map(function(g){ return '"' + g.map(function(l){ return '【' + l.sec + '秒】' + l.text; }).join('\n').replace(/"/g, '""') + '"'; }).join('\n');
+  const done = function(){ flowToast('已拷贝 ' + rows.length + ' 个文案（' + lineCount + ' 行，带秒数和颜色），粘贴到表格即可'); };
+  let ok = false;
+  // Google 表格自己的格子数据（实测：带这一项时，格子里部分文字的颜色和换行都会保留）
+  let gsJson = '';
+  try {
+    const flags = [], vals = [], idx = [], sets = [];
+    rows.forEach(function(g){
+      let val = '', runs = [];
+      g.forEach(function(l, li){
+        if (li) val += '\n';
+        val += '【' + l.sec + '秒】';
+        l.parts.forEach(function(pt){
+          const ci = _flowColorInt(pt.c);
+          if (ci != null){ runs.push({ 1: val.length, 2: { 2: { 1: 2, 2: ci } } }); val += pt.t; runs.push({ 1: val.length }); }
+          else val += pt.t;
+        });
+      });
+      vals.push(val);
+      if (runs.length){ sets.push({ 1: [{ 1: 0 }].concat(runs) }); idx.push(sets.length); flags.push(1219); }
+      else { idx.push(0); flags.push(195); }
+    });
+    const n = rows.length;
+    gsJson = JSON.stringify({ 1: 1, 2: flags, 3: { 1: rows.map(function(){ return 2; }), 4: vals }, 4: [{ 2: 4224, 10: 2, 15: 'Arial' }],
+      5: rows.map(function(){ return 0; }), 12: idx, 13: idx, 15: { 1: n, 2: 1 }, 17: sets, 20: n });
+  } catch(e) { gsJson = ''; }
+  const onCopy = function(e){ try { if (gsJson) e.clipboardData.setData('application/x-vnd.google-spreadsheet-compact-table+json', gsJson); e.clipboardData.setData('text/html', html); e.clipboardData.setData('text/plain', plain); e.preventDefault(); ok = true; } catch(err) {} };
+  // 先让页面拿到焦点（从别的窗口切回来直接点按钮时，页面可能还没有焦点，浏览器会拒绝拷贝）
+  const ta = document.createElement('textarea');
+  ta.value = plain; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
+  document.body.appendChild(ta);
+  try { window.focus(); ta.focus(); ta.select(); } catch(e) {}
+  document.addEventListener('copy', onCopy, true);
+  try { document.execCommand('copy'); } catch(e) {}
+  document.removeEventListener('copy', onCopy, true);
+  ta.remove();
+  if (ok){ done(); return true; }
+  try {
+    if (navigator.clipboard && navigator.clipboard.write && typeof ClipboardItem !== 'undefined'){
+      navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }), 'text/plain': new Blob([plain], { type: 'text/plain' }) })]).then(done, function(){ flowToast('拷贝失败：请先点一下文案框，再点「拷贝文案」', 'error'); });
+      return true;
+    }
+  } catch(e) {}
+  flowToast('拷贝失败：请先点一下文案框，再点「拷贝文案」', 'error');
+  return true;
+}
 function flowCopySplitText2(){
   const el = document.getElementById('lines2');
+  if (el && flowGetLang() === 'pt' && _flowCopyPtTable2(el)) return;
   const raw = el ? String(el.value != null ? el.value : el.innerText || '') : '';
   const text = raw.replace(/\r/g, '').split('\n')
     .filter(function(l){ return !/^\s*【\s*\d+\s*】\s*$/.test(l); })
